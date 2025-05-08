@@ -1,0 +1,21 @@
+{
+  "name": "bugbuddy-backend",
+  "version": "1.0.0",
+  "description": "tinder for devs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/app.js"
+  },
+  "keywords": [
+    "backend",
+    "node",
+    "express",
+    "javascript"
+  ],
+  "author": "bhavesh bhanusali",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  }
+}
