@@ -1,8 +1,10 @@
 const express = require('express');
 const connectDB = require('./config/database');
+const bcrypt = require('bcrypt');
 const app = express();
 
 const User = require('./models/user');
+const { validateSignup, checkAllowedData, validateEmail } = require('./helpers/validation');
 
 app.use(express.json());
 
@@ -33,13 +35,11 @@ app.delete("/user", async (req, res) => {
 app.patch("/user/:userId", async (req, res) => {
     const userId = req.params.userId;
     try {
-        const allowedUpdates = ["firstName", "lastName", "mobileNo", "skills", "description", "profilePic"];
-        const updates = Object.keys(req.body);
-        const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
-        if (!isValidOperation) {
-            // return res.status(400).send({ error: "Invalid updates!" });
-            throw new Error("Invalid updates!");
+        // check of allowed updates
+        if (!checkAllowedData(["firstName", "lastName", "mobileNo", "skills", "description"], Object.keys(req.body))) {
+            throw new Error("Invalid entries passed!");
         }
+
 
         const userObj = req.body;
         await User.findByIdAndUpdate(userId, userObj, {
@@ -54,8 +54,17 @@ app.patch("/user/:userId", async (req, res) => {
 app.post("/signup", async (req, res) => {
 
     try {
-        console.log(req.body);
-        const userObj = req.body;
+        if (!checkAllowedData(["firstName", "lastName", "mobileNo", "skills", "description", "profilePic", "email", "password", "age", "gender"], Object.keys(req.body))) {
+            throw new Error("Please provide valid data");
+        }
+        //check if data is valid
+        validateSignup(req);
+
+        //ecrypt data
+        const { firstName, lastName, mobileNo, skills, description, profilePic, email, password, age, gender } = req.body;
+        const encryptedPassword = await bcrypt.hash(password, 10);
+
+        const userObj = { firstName, lastName, mobileNo, skills, description, profilePic, email, password: encryptedPassword, age, gender };
 
         const user = new User(userObj);
         await user.save();
@@ -64,6 +73,28 @@ app.post("/signup", async (req, res) => {
         res.status(400).send("Error while saving user " + error);
     }
 });
+app.post("/login", async (req, res) => {
+    try {
+        if (!checkAllowedData(["email", "password"], Object.keys(req.body))) {
+            throw new Error("Please provide valid data");
+        }
+
+        const { email, password } = req.body;
+        validateEmail(email);
+
+        const user = await User.findOne({ email: email });
+        if (!user) {
+            throw new Error("Invalid Credentials");
+        }
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            throw new Error("Invalid Credentials");
+        }
+        res.send("user logged in successfully");
+    } catch (error) {
+        res.status(400).send("Error: " + error.message);
+    }
+})
 app.use("/", () => {
     console.log("something went wrong");
 })
